@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Protected Site by Gatekeeper</title>
+    <style>
+        body {
+            font-family: system-ui, Segoe UI, Roboto, Arial;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image: url(/assets/bg.jpg);
+            background-position: center;
+        }
+
+        h2 {
+            color: white;
+        }
+
+        .card {
+            background: #2a2a2a66;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+            width: 320px;
+            text-align: center;
+            backdrop-filter: blur(6px);
+        }
+
+        input {
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 1rem;
+            text-align: center;
+            width: 80%;
+        }
+
+        button {
+            width: 10rem;
+            height: 4rem;
+            margin-top: 1rem;
+            border: none;
+            border-radius: 6px;
+            background: #2563eb;
+            color: white;
+            font-weight: 600;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .error {
+            color: #b91c1c;
+            margin-top: 6px;
+            font-size: 14px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .content {
+            padding: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card" id="box">
+        <h2>Enter PIN</h2>
+        <input id="pin" type="password" placeholder="Enter PIN to unlock site" autocomplete="off" />
+        <div id="msg"></div>
+        <button id="submitBtn">Unlock 🔓</button>
+        <div class="error hidden" id="err">Incorrect PIN/password</div>
+    </div>
+
+    <div class="card hidden" id="protected">
+        <h2>Protected Content</h2>
+        <div class="content">
+            <p>This is the protected page content shown after correct entry.</p>
+            <button id="lockBtn">Lock</button>
+        </div>
+    </div>
+
+
+</body>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('submitBtn');
+        const pinEl = document.getElementById('pin');
+        const msg = document.getElementById('msg');
+
+        btn.addEventListener('click', async () => {
+            const pin = (pinEl.value || '').trim();
+            if (!pin) { msg.textContent = 'Enter PIN'; msg.style.color = 'darkred'; return; }
+
+            try {
+                const r = await fetch('http://localhost:3000/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin })
+                });
+                if (!r.ok) {
+                    msg.textContent = `Server error: ${r.status}`;
+                    return;
+                }
+                const j = await r.json();
+                if (j.ok) {
+                    msg.textContent = 'Access granted';
+                    msg.style.color = 'limegreen';
+                    window.location = '/';
+                } else {
+                    msg.textContent = 'Access denied';
+                    msg.style.color = 'darkred';
+                }
+            } catch (e) {
+                console.error(e);
+                msg.textContent = 'Request failed';
+            }
+        });
+    });
+</script>
+
+</html>
