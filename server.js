@@ -1,6 +1,5 @@
 const express = require('express');
 const path = require('path');
-const argon2 = require('argon2');
 const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 const fs = require('fs');
@@ -26,7 +25,23 @@ function verifyToken(token) {
   } catch { return null; }
 }
 
-// Load stored Argon2 hash (pin.hash) OR convert to it from pin.txt
+// scrypt parameters (tune if desired)
+const SCRYPT_N = parseInt(process.env.SCRYPT_N, 10) || 16384; // cost parameter (2^14)
+const SCRYPT_r = parseInt(process.env.SCRYPT_r, 10) || 8;
+const SCRYPT_p = parseInt(process.env.SCRYPT_p, 10) || 1;
+const KEY_LEN = parseInt(process.env.SCRYPT_KEY_LEN, 10) || 32;
+const SALT_LEN = parseInt(process.env.SCRYPT_SALT_LEN, 10) || 16;
+
+function scryptDerive(password, salt) {
+  // crypto.scryptSync accepts an options object for cost on modern Node versions:
+  // { N, r, p } are provided as {cost: N, blockSize: r, parallelization: p} in older docs,
+  // but Node's current signature supports {N, r, p} via scrypt derived from libsodium-like API.
+  // Use the options object with maxmem if needed. Here we pass the params via options where supported.
+  // For compatibility, pass { N: SCRYPT_N, r: SCRYPT_r, p: SCRYPT_p }.
+  return crypto.scryptSync(password, salt, KEY_LEN, { N: SCRYPT_N, r: SCRYPT_r, p: SCRYPT_p });
+}
+
+// Load stored scrypt-derived hash (pin.hash) OR convert to it from pin.txt
 const hashPath = path.join(__dirname, 'pin.hash');
 const legacyPath = path.join(__dirname, 'pin.txt');
 
@@ -36,27 +51,41 @@ if (fs.existsSync(hashPath)) {
   app.locals.storedHash = stored;
   console.log('Loaded PIN hash from pin.hash');
 } else if (fs.existsSync(legacyPath)) {
-  console.warn('pin.txt (plain text pin) detected. Converting to pin.hash...');
+  console.warn('pin.txt (plain text pin) detected. Converting to pin.hash (scrypt)...');
   const plain = fs.readFileSync(legacyPath, 'utf8').trim();
   (async () => {
-    const hash = await argon2.hash(plain, { type: argon2.argon2id, timeCost: 2, memoryCost: 64 * 1024, parallelism: 1 });
-    fs.writeFileSync(hashPath, hash + '\n', { mode: 0o600 });
-    fs.chmodSync(hashPath, 0o600);
-    try { fs.unlinkSync(legacyPath); console.log('Removed plain pin.txt'); } catch {}
-    app.locals.storedHash = hash;
-    console.log('Conversion complete: pin.hash written');
-  })().catch((e) => { console.error('Conversion failed', e); process.exit(1); });
+    try {
+      const salt = crypto.randomBytes(SALT_LEN);
+      const derived = scryptDerive(plain, salt);
+      const hash = `${salt.toString('base64')}.${derived.toString('base64')}`;
+      fs.writeFileSync(hashPath, hash + '\n', { mode: 0o600 });
+      fs.chmodSync(hashPath, 0o600);
+      try { fs.unlinkSync(legacyPath); console.log('Removed plain pin.txt'); } catch {}
+      app.locals.storedHash = out;
+      console.log('Conversion complete: pin.hash written (scrypt)');
+    } catch (e) {
+      console.error('Conversion failed', e);
+      process.exit(1);
+    }
+  })();
 } else {
   console.error('No pin.hash found. Run `node set-pin.js` to create one.');
   process.exit(1);
 }
 
-app.post('/verify', async (req, res) => {
+app.post('/verify', (req, res) => {
   const { pin } = req.body;
   if (!pin) return res.status(400).json({ ok: false, error: 'missing' });
   try {
-    const ok = await argon2.verify(req.app.locals.storedHash, String(pin));
-    if (!ok) return res.json({ ok: false });
+    const stored = req.app.locals.storedHash;
+    if (!stored) return res.status(500).json({ ok: false });
+    const [saltB64, derivedB64] = stored.split('.');
+    if (!saltB64 || !derivedB64) return res.status(500).json({ ok: false });
+    const salt = Buffer.from(saltB64, 'base64');
+    const derivedStored = Buffer.from(derivedB64, 'base64');
+    const derivedTry = scryptDerive(String(pin), salt);
+    if (!crypto.timingSafeEqual(derivedStored, derivedTry)) return res.json({ ok: false });
+
     const tokenObj = { user: 'guest', iat: Date.now(), exp: Date.now() + 24 * 60 * 60 * 1000 };
     const token = sign(tokenObj);
     res.cookie('site_auth', token, { httpOnly: true, secure: false, sameSite: 'Lax', maxAge: 24 * 60 * 60 * 1000 });

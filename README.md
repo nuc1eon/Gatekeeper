@@ -24,9 +24,9 @@ The `/public` folder holds the frontend for Gatekeeper itself, the backend code 
 
 ### Setting a secure PIN/Password
 
-Define a plain text pin inside the `pin.txt` file. On first run, Gatekeeper will convert it to a secure Argon2 hash (`pin.txt` -> `pin.hash`). So write down or remember your pin.
+Define a plain text pin inside the `pin.txt` file. On first run, Gatekeeper will convert it to a secure ([scrypt](https://en.wikipedia.org/wiki/Scrypt) derived) hash (`pin.txt` -> `pin.hash`). So write down or remember your pin.
 
-Alternatively, if you want to update your pin or convert it manually to Argon2, you can run `node set-pin.js`. You'll be prompted for the new pin to be hashed and a `pin.hash` file will be generated for you.
+Alternatively, if you want set your pin or update it manually, you can run `node set-pin.js`. You'll be prompted for the new pin to be hashed and a `pin.hash` file will be generated for you.
 
 
 ### Running the server

@@ -1,9 +1,20 @@
-// Description: Enter your pin to securely store it as Argon2 hash in a file "pin.hash".
+// Description: Enter your pin to securely store it as an scrypt-derived key in a file "pin.hash".
 // Usage: node set-pin.js
 
 const fs = require('fs');
 const path = require('path');
-const argon2 = require('argon2');
+const crypto = require('crypto');
+
+// scrypt parameters (match server.js)
+const SCRYPT_N = parseInt(process.env.SCRYPT_N, 10) || 16384;
+const SCRYPT_r = parseInt(process.env.SCRYPT_r, 10) || 8;
+const SCRYPT_p = parseInt(process.env.SCRYPT_p, 10) || 1;
+const KEY_LEN = parseInt(process.env.SCRYPT_KEY_LEN, 10) || 32;
+const SALT_LEN = parseInt(process.env.SCRYPT_SALT_LEN, 10) || 16;
+
+function scryptDerive(password, salt) {
+  return crypto.scryptSync(password, salt, KEY_LEN, { N: SCRYPT_N, r: SCRYPT_r, p: SCRYPT_p });
+}
 
 // small function to hide user input and replace it with asterisks
 function hidden(prompt) {
@@ -43,12 +54,9 @@ function hidden(prompt) {
     const pin2 = await hidden('Confirm PIN: ');
     if (pin1 !== pin2) { console.error('PINs do not match'); process.exit(1); }
 
-    const hash = await argon2.hash(pin1, {
-      type: argon2.argon2id,
-      timeCost: 2,
-      memoryCost: 64 * 1024,
-      parallelism: 1
-    });
+    const salt = crypto.randomBytes(SALT_LEN);
+    const derived = scryptDerive(pin1, salt);
+    const hash = `${salt.toString('base64')}.${derived.toString('base64')}`;
 
     const outPath = path.join(__dirname, 'pin.hash');
     fs.writeFileSync(outPath, hash + '\n', { mode: 0o600 });

@@ -100,7 +100,7 @@
             if (!pin) { msg.textContent = 'Enter PIN'; msg.style.color = 'darkred'; return; }
 
             try {
-                const r = await fetch('http://localhost:3000/verify', {
+                const r = await fetch('/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ pin })
