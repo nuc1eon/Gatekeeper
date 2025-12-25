@@ -34,7 +34,7 @@ Alternatively, if you want set your pin or update it manually, you can run `node
 .... is as simple as `npm start`.
 
 
-# How Secure is it?
+## How Secure is it?
 
 Secure enough to keep general bot scrapers, search engines and overly curious rando's out of the way.
 
@@ -45,7 +45,7 @@ Mostly, that depends mostly on your password strength.
 However I am not a security researcher and haven't properly audited the tool. But for my use-case it is more than enough.
 
 
-# Contributions
+## Contributions
 
 High quality contributions are highly encouraged!
 Feel free to post bug reports or send in pull request.
