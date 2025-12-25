@@ -3,7 +3,7 @@ Copyright (c) 2025, fyrak1s. All rights reserved.
 This project is licensed under the Copyfree Open Innovation License (COIL) 1.0.
 Full license text follows.
 
-# Copyfree Open Innovation License
+# Copyfree Open Innovation License (COIL)
 
 This is version 1.0 of the Copyfree Open Innovation License.
 
