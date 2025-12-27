@@ -8,7 +8,7 @@ Gatekeeper is a an *ultra simplistic* tool to secure your websites behind a pin/
 
 Sometimes we are working on something new, and would like to see our site up-online. However we may not yet be ready to publicly share our work.
 
-Gatekeeper allows you to see our site in "production" under our domain, but share it safely with friends and co-workers. For instance to share mock-up designs etc.
+Gatekeeper allows us to see our site as if it were in "production" under our own domain. Now we can share our idea safely with friends and co-workers, for instance to share mock-up designs etc.
 
 ## How does it work?
 
